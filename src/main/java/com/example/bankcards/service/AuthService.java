@@ -1,6 +1,7 @@
 package com.example.bankcards.service;
 
 import com.example.bankcards.dto.AuthDTO;
+import com.example.bankcards.entity.RefreshToken;
 import com.example.bankcards.entity.Role;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.exception.DuplicateResourceException;
@@ -23,17 +24,18 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public AuthDTO.AuthResponse register(AuthDTO.RegisterRequest request) {
-        log.info("Registration attempt for username='{}', email='{}'", request.getUsername(), request.getEmail());
+        log.info("Registration attempt: username='{}', email='{}'", request.getUsername(), request.getEmail());
 
         if (userRepository.existsByUsername(request.getUsername())) {
-            log.warn("Registration failed — username already taken: '{}'", request.getUsername());
+            log.warn("Registration failed — username taken: '{}'", request.getUsername());
             throw new DuplicateResourceException("Username already taken: " + request.getUsername());
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            log.warn("Registration failed — email already registered: '{}'", request.getEmail());
+            log.warn("Registration failed — email taken: '{}'", request.getEmail());
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
 
@@ -46,21 +48,69 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        log.info("User registered successfully: username='{}', id={}", user.getUsername(), user.getId());
+        log.info("User registered: id={}, username='{}'", user.getId(), user.getUsername());
 
-        String token = jwtUtil.generateToken(user);
-        return new AuthDTO.AuthResponse(token, user.getUsername(), user.getRole().name());
+        return buildAuthResponse(user);
     }
 
+    @Transactional
     public AuthDTO.AuthResponse login(AuthDTO.LoginRequest request) {
-        log.info("Login attempt for username='{}'", request.getUsername());
+        log.info("Login attempt: username='{}'", request.getUsername());
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
+
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
         log.info("Login successful: username='{}', role={}", user.getUsername(), user.getRole());
-        String token = jwtUtil.generateToken(user);
-        return new AuthDTO.AuthResponse(token, user.getUsername(), user.getRole().name());
+        return buildAuthResponse(user);
+    }
+
+    /**
+     * Issues new access + refresh tokens using a valid refresh token.
+     * The old refresh token is revoked (rotation — prevents reuse).
+     */
+    @Transactional
+    public AuthDTO.RefreshResponse refresh(AuthDTO.RefreshRequest request) {
+        log.debug("Token refresh requested");
+
+        RefreshToken oldToken = refreshTokenService.verifyRefreshToken(request.getRefreshToken());
+        User user = oldToken.getUser();
+
+        // Revoke the used token (rotation strategy)
+        oldToken.setRevoked(true);
+
+        // Issue new pair
+        String newAccessToken = jwtUtil.generateToken(user);
+        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user);
+
+        log.info("Tokens rotated for userId={}", user.getId());
+        return new AuthDTO.RefreshResponse(newAccessToken, newRefreshToken.getToken());
+    }
+
+    /**
+     * Revokes all refresh tokens for the authenticated user (logout from all sessions).
+     */
+    @Transactional
+    public void logout(String username) {
+        userRepository.findByUsername(username).ifPresent(user -> {
+            refreshTokenService.revokeAll(user.getId());
+            log.info("User '{}' logged out — all refresh tokens revoked", username);
+        });
+    }
+
+    // ─── Helper ──────────────────────────────────────────────────────────────
+
+    private AuthDTO.AuthResponse buildAuthResponse(User user) {
+        String accessToken = jwtUtil.generateToken(user);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        return new AuthDTO.AuthResponse(
+                accessToken,
+                refreshToken.getToken(),
+                user.getUsername(),
+                user.getRole().name()
+        );
     }
 }

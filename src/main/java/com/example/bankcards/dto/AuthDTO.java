@@ -31,16 +31,43 @@ public class AuthDTO {
         private String password;
     }
 
+    // Returned on login/register — contains BOTH tokens
     @Data
     public static class AuthResponse {
-        private String token;
+        private String accessToken;
+        private String refreshToken;
         private String username;
         private String role;
 
-        public AuthResponse(String token, String username, String role) {
-            this.token = token;
+        public AuthResponse(String accessToken, String refreshToken, String username, String role) {
+            this.accessToken = accessToken;
+            this.refreshToken = refreshToken;
             this.username = username;
             this.role = role;
         }
+    }
+
+    // Sent by client to get a new access token
+    @Data
+    public static class RefreshRequest {
+        @NotBlank(message = "Refresh token is required")
+        private String refreshToken;
+    }
+
+    // Returned after successful token refresh
+    @Data
+    public static class RefreshResponse {
+        private String accessToken;
+        private String refreshToken;
+
+        public RefreshResponse(String accessToken, String refreshToken) {
+            this.accessToken = accessToken;
+            this.refreshToken = refreshToken;
+        }
+    }
+
+    @Data
+    public static class LogoutRequest {
+        // Empty body — user is identified from JWT in Authorization header
     }
 }

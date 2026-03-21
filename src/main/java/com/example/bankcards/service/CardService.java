@@ -8,12 +8,14 @@ import com.example.bankcards.exception.CardOperationException;
 import com.example.bankcards.exception.InsufficientFundsException;
 import com.example.bankcards.exception.ResourceNotFoundException;
 import com.example.bankcards.repository.CardRepository;
+import com.example.bankcards.repository.CardSpecification;
 import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardEncryptionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,15 +54,15 @@ public class CardService {
                 .build();
 
         Card saved = cardRepository.save(card);
-        log.info("Card created successfully: id={}, masked={}, ownerId={}", saved.getId(), masked, owner.getId());
+        log.info("Card created: id={}, masked={}, ownerId={}", saved.getId(), masked, owner.getId());
         return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public Page<CardDTO.CardResponse> getAllCards(CardStatus status, Long ownerId, Pageable pageable) {
-        log.debug("Admin fetching all cards: status={}, ownerId={}, page={}",
-                status, ownerId, pageable.getPageNumber());
-        return cardRepository.findAllWithFilters(status, ownerId, pageable).map(this::toResponse);
+        log.debug("Admin fetching all cards: status={}, ownerId={}, page={}", status, ownerId, pageable.getPageNumber());
+        Specification<Card> spec = CardSpecification.forAdmin(status, ownerId);
+        return cardRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -78,7 +80,7 @@ public class CardService {
             throw new CardOperationException("Cannot activate an expired card");
         }
         card.setStatus(CardStatus.ACTIVE);
-        log.info("Card id={} activated successfully", id);
+        log.info("Card id={} activated", id);
         return toResponse(cardRepository.save(card));
     }
 
@@ -87,11 +89,11 @@ public class CardService {
         log.info("Admin blocking card id={}", id);
         Card card = findById(id);
         if (card.getStatus() == CardStatus.EXPIRED) {
-            log.warn("Block failed: card id={} is already EXPIRED", id);
+            log.warn("Block failed: card id={} is EXPIRED", id);
             throw new CardOperationException("Cannot block an expired card");
         }
         card.setStatus(CardStatus.BLOCKED);
-        log.info("Card id={} blocked successfully by admin", id);
+        log.info("Card id={} blocked by admin", id);
         return toResponse(cardRepository.save(card));
     }
 
@@ -102,7 +104,7 @@ public class CardService {
             throw new ResourceNotFoundException("Card", id);
         }
         cardRepository.deleteById(id);
-        log.info("Card id={} deleted successfully", id);
+        log.info("Card id={} deleted", id);
     }
 
     // ─── User operations ─────────────────────────────────────────────────────
@@ -110,10 +112,10 @@ public class CardService {
     @Transactional(readOnly = true)
     public Page<CardDTO.CardResponse> getMyCards(Long userId, CardStatus status,
                                                  String maskedNumber, Pageable pageable) {
-        log.debug("User id={} fetching own cards: status={}, maskedNumber='{}', page={}",
+        log.debug("User id={} fetching own cards: status={}, mask='{}', page={}",
                 userId, status, maskedNumber, pageable.getPageNumber());
-        return cardRepository.findByOwnerIdWithFilters(userId, status, maskedNumber, pageable)
-                .map(this::toResponse);
+        Specification<Card> spec = CardSpecification.forUser(userId, status, maskedNumber);
+        return cardRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -130,7 +132,7 @@ public class CardService {
         Card card = cardRepository.findByIdAndOwnerId(cardId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found or does not belong to you"));
         if (card.getStatus() != CardStatus.ACTIVE) {
-            log.warn("Block request denied: card id={} is not ACTIVE, current status={}", cardId, card.getStatus());
+            log.warn("Block request denied: card id={} is not ACTIVE (status={})", cardId, card.getStatus());
             throw new CardOperationException("Only active cards can be blocked");
         }
         card.setStatus(CardStatus.BLOCKED);
@@ -140,26 +142,25 @@ public class CardService {
 
     @Transactional
     public void transfer(Long userId, CardDTO.TransferRequest request) {
-        log.info("Transfer initiated: userId={}, fromCardId={}, toCardId={}, amount={}",
+        log.info("Transfer: userId={}, from={}, to={}, amount={}",
                 userId, request.getFromCardId(), request.getToCardId(), request.getAmount());
 
         if (request.getFromCardId().equals(request.getToCardId())) {
-            log.warn("Transfer rejected: source and destination are the same card id={}", request.getFromCardId());
+            log.warn("Transfer rejected: same card id={}", request.getFromCardId());
             throw new CardOperationException("Source and destination cards must be different");
         }
 
         Card fromCard = cardRepository.findByIdAndOwnerId(request.getFromCardId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Source card not found or does not belong to you"));
-
         Card toCard = cardRepository.findByIdAndOwnerId(request.getToCardId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Destination card not found or does not belong to you"));
 
         if (fromCard.getStatus() != CardStatus.ACTIVE) {
-            log.warn("Transfer rejected: source card id={} has status={}", fromCard.getId(), fromCard.getStatus());
+            log.warn("Transfer rejected: source card id={} is {}", fromCard.getId(), fromCard.getStatus());
             throw new CardOperationException("Source card is not active");
         }
         if (toCard.getStatus() != CardStatus.ACTIVE) {
-            log.warn("Transfer rejected: destination card id={} has status={}", toCard.getId(), toCard.getStatus());
+            log.warn("Transfer rejected: dest card id={} is {}", toCard.getId(), toCard.getStatus());
             throw new CardOperationException("Destination card is not active");
         }
         if (fromCard.getBalance().compareTo(request.getAmount()) < 0) {
@@ -175,7 +176,7 @@ public class CardService {
 
         cardRepository.save(fromCard);
         cardRepository.save(toCard);
-        log.info("Transfer completed: {} transferred from card id={} to card id={}",
+        log.info("Transfer completed: {} from card id={} to card id={}",
                 request.getAmount(), fromCard.getId(), toCard.getId());
     }
 
