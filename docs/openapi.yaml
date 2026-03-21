@@ -1,0 +1,627 @@
+openapi: 3.0.3
+info:
+  title: Bank Cards Management API
+  description: REST API for managing bank cards with JWT authentication
+  version: "1.0"
+  contact:
+    name: BankCards Team
+    email: dev@bankcards.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local Dev Server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Authentication
+    description: Register and login
+  - name: User
+    description: Endpoints for authenticated users
+  - name: Admin - Cards
+    description: Admin card management
+  - name: Admin - Users
+    description: Admin user management
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login and receive JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/user/me:
+    get:
+      tags: [User]
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    put:
+      tags: [User]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /api/user/cards:
+    get:
+      tags: [User]
+      summary: Get my cards with optional filters and pagination
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CardStatus'
+        - name: maskedNumber
+          in: query
+          schema:
+            type: string
+            example: "1234"
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated list of my cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPage'
+
+  /api/user/cards/{id}:
+    get:
+      tags: [User]
+      summary: Get one of my cards by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Card details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/user/cards/{id}/block:
+    post:
+      tags: [User]
+      summary: Request blocking of my card
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Card blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /api/user/cards/transfer:
+    post:
+      tags: [User]
+      summary: Transfer funds between my own cards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '200':
+          description: Transfer successful
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '422':
+          $ref: '#/components/responses/InsufficientFundsError'
+
+  /api/admin/cards:
+    post:
+      tags: [Admin - Cards]
+      summary: Create a new bank card for a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardRequest'
+      responses:
+        '201':
+          description: Card created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+    get:
+      tags: [Admin - Cards]
+      summary: Get all cards with optional filters and pagination
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CardStatus'
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Paginated list of all cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPage'
+
+  /api/admin/cards/{id}:
+    get:
+      tags: [Admin - Cards]
+      summary: Get a card by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Card details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags: [Admin - Cards]
+      summary: Delete a card
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/admin/cards/{id}/activate:
+    put:
+      tags: [Admin - Cards]
+      summary: Activate a card
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Card activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+
+  /api/admin/cards/{id}/block:
+    put:
+      tags: [Admin - Cards]
+      summary: Block a card
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Card blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+
+  /api/admin/users:
+    get:
+      tags: [Admin - Users]
+      summary: Get all users with pagination
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Paginated list of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+    post:
+      tags: [Admin - Users]
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /api/admin/users/{id}:
+    get:
+      tags: [Admin - Users]
+      summary: Get user by ID
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags: [Admin - Users]
+      summary: Delete a user
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Deleted successfully
+
+  /api/admin/users/{id}/enable:
+    put:
+      tags: [Admin - Users]
+      summary: Enable a user account
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: User enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /api/admin/users/{id}/disable:
+    put:
+      tags: [Admin - Users]
+      summary: Disable a user account
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: User disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 0
+    SizeParam:
+      name: size
+      in: query
+      schema:
+        type: integer
+        default: 10
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: string
+        example: createdAt,desc
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          minLength: 8
+          example: Password1!
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: johndoe
+        password:
+          type: string
+          example: Password1!
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiJ9...
+        username:
+          type: string
+          example: johndoe
+        role:
+          type: string
+          example: USER
+
+    CardStatus:
+      type: string
+      enum: [ACTIVE, BLOCKED, EXPIRED]
+
+    CardResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        cardNumberMasked:
+          type: string
+          example: "**** **** **** 1234"
+        ownerId:
+          type: integer
+          format: int64
+        ownerUsername:
+          type: string
+        expiryDate:
+          type: string
+          format: date
+          example: "2028-12-31"
+        status:
+          $ref: '#/components/schemas/CardStatus'
+        balance:
+          type: number
+          format: decimal
+          example: 1500.00
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateCardRequest:
+      type: object
+      required: [ownerId, expiryDate]
+      properties:
+        ownerId:
+          type: integer
+          format: int64
+        expiryDate:
+          type: string
+          format: date
+          example: "2028-12-31"
+        initialBalance:
+          type: number
+          format: decimal
+          default: 0.00
+
+    TransferRequest:
+      type: object
+      required: [fromCardId, toCardId, amount]
+      properties:
+        fromCardId:
+          type: integer
+          format: int64
+        toCardId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: decimal
+          minimum: 0.01
+          example: 500.00
+
+    CardPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [USER, ADMIN]
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    AdminCreateUserRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [USER, ADMIN]
+          default: USER
+
+    UserPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    UnauthorizedError:
+      description: Invalid or missing token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequestError:
+      description: Bad request / invalid operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ConflictError:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+              message:
+                type: string
+              errors:
+                type: object
+                additionalProperties:
+                  type: string
+    InsufficientFundsError:
+      description: Insufficient funds for transfer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
