@@ -54,12 +54,10 @@ java -jar target/bankcards-0.0.1-SNAPSHOT.jar
 
 ## 🔐 Аутентификация
 
-Система использует два типа токенов:
-
-| Токен         | Срок жизни | Назначение                              |
-|---------------|------------|-----------------------------------------|
-| Access Token  | 24 часа    | Передаётся в заголовке `Authorization`  |
-| Refresh Token | 7 дней     | Обменивается на новую пару токенов      |
+| Токен         | Срок жизни | Назначение                             |
+|---------------|------------|----------------------------------------|
+| Access Token  | 24 часа    | Передаётся в заголовке `Authorization` |
+| Refresh Token | 7 дней     | Обменивается на новую пару токенов     |
 
 Все защищённые endpoints требуют заголовок:
 
@@ -68,7 +66,7 @@ Authorization: Bearer <ACCESS_TOKEN>
 ```
 
 При истечении access token используйте `/api/auth/refresh` — старый refresh token
-при этом **немедленно инвалидируется** (rotation стратегия).
+**немедленно инвалидируется** (rotation стратегия).
 
 ### Дефолтный администратор (создаётся миграцией)
 
@@ -83,12 +81,12 @@ Authorization: Bearer <ACCESS_TOKEN>
 
 ### Auth
 
-| Method | URL                   | Описание                                    | Auth      |
-|--------|-----------------------|---------------------------------------------|-----------|
-| POST   | `/api/auth/register`  | Регистрация — возвращает оба токена         | —         |
-| POST   | `/api/auth/login`     | Логин — возвращает оба токена               | —         |
+| Method | URL                   | Описание                                            | Auth   |
+|--------|-----------------------|-----------------------------------------------------|--------|
+| POST   | `/api/auth/register`  | Регистрация — возвращает оба токена                 | —      |
+| POST   | `/api/auth/login`     | Логин — возвращает оба токена                       | —      |
 | POST   | `/api/auth/refresh`   | Ротация токенов: старый отзывается, выдаётся новая пара | —  |
-| POST   | `/api/auth/logout`    | Отзыв всех refresh токенов пользователя     | Bearer    |
+| POST   | `/api/auth/logout`    | Отзыв всех refresh токенов пользователя             | Bearer |
 
 ### User (роль USER)
 
@@ -196,13 +194,15 @@ src/main/java/com/example/bankcards/
 ├── dto/             # AuthDto, CardDto, UserDto
 ├── entity/          # User, Card, RefreshToken, Role, CardStatus
 ├── exception/       # GlobalExceptionHandler + кастомные исключения
+├── mapper/          # CardMapper, UserMapper (MapStruct)
 ├── repository/      # CardRepository, UserRepository,
 │                    # RefreshTokenRepository, CardSpecification
-├── security/        # JwtAuthenticationFilter
+├── security/        # JwtAuthenticationFilter, RateLimitingFilter
 ├── service/         # AuthService, CardService, UserService,
 │                    # RefreshTokenService, CardExpiryScheduler,
 │                    # UserDetailsServiceImpl
-└── util/            # JwtUtil, CardEncryptionUtil
+├── util/            # JwtUtil, CardEncryptionUtil
+└── validation/      # @ValidCardNumber, CardNumberValidator (Luhn)
 ```
 
 ---
@@ -210,9 +210,11 @@ src/main/java/com/example/bankcards/
 ## 🔒 Безопасность
 
 - Номера карт **шифруются AES** в БД — в ответах только маска `**** **** **** 1234`
+- Генерируемые номера карт проходят **алгоритм Луна** (контрольная цифра вычисляется)
 - Пароли хэшируются **BCrypt**
 - **Access Token** (JWT HS256) — срок жизни 24 часа
 - **Refresh Token** (UUID) — срок жизни 7 дней, хранится в БД, rotation при обновлении
+- **Rate Limiting** (Bucket4j) — 10 запросов в минуту на IP для `/login` и `/register`
 - Ролевой доступ через **Spring Security** + `@PreAuthorize`
 - Пользователь видит **только свои карты**
 
@@ -230,54 +232,63 @@ src/main/java/com/example/bankcards/
 
 ## 🔍 Фильтрация (JPA Specification)
 
-Фильтрация карт построена через `CardSpecification` (паттерн Specification из Spring Data JPA).
-Каждый параметр независим — `null` значение игнорируется, условие не добавляется в запрос.
+Фильтрация карт построена через `CardSpecification`. Каждый параметр независим — `null` игнорируется.
 
-| Параметр       | Тип          | Применимость     |
-|----------------|--------------|------------------|
-| `status`       | `CardStatus` | admin + user     |
-| `ownerId`      | `Long`       | только admin     |
-| `maskedNumber` | `String`     | только user      |
+| Параметр       | Тип          | Применимость |
+|----------------|--------------|--------------|
+| `status`       | `CardStatus` | admin + user |
+| `ownerId`      | `Long`       | только admin |
+| `maskedNumber` | `String`     | только user  |
 
 ---
 
 ## 🧪 Тесты
 
 ```bash
+# Все тесты (unit + интеграционные)
 mvn test
+
+# Только unit-тесты (без Docker)
+mvn test -Dgroups="!integration"
 ```
 
-| Класс | Что покрывает |
-|-------|---------------|
-| `CardServiceTest` | Создание карты, блокировка, активация, переводы (10 кейсов) |
-| `AuthServiceTest` | Регистрация, логин, refresh, logout, дубликаты (8 кейсов) |
-| `RefreshTokenServiceTest` | Создание, валидация, ротация, очистка токенов (6 кейсов) |
-| `CardExpirySchedulerTest` | Джоб истечения ACTIVE и BLOCKED карт (3 кейса) |
-| `CardSpecificationTest` | Сборка спецификаций, null-параметры (6 кейсов) |
-| `AuthControllerTest` | HTTP-слой: register, login (3 кейса) |
-| `CardEncryptionUtilTest` | AES encrypt/decrypt, маскирование, генерация (4 кейса) |
+> Интеграционные тесты требуют запущенный Docker — Testcontainers поднимает
+> PostgreSQL автоматически.
+
+| Класс | Тип | Что покрывает |
+|-------|-----|---------------|
+| `CardServiceTest` | Unit | Создание, блокировка, активация, переводы (10 кейсов) |
+| `AuthServiceTest` | Unit | Регистрация, логин, refresh, logout (8 кейсов) |
+| `RefreshTokenServiceTest` | Unit | Создание, валидация, ротация, очистка (6 кейсов) |
+| `CardExpirySchedulerTest` | Unit | Джоб истечения ACTIVE и BLOCKED карт (4 кейса) |
+| `CardSpecificationTest` | Unit | Сборка спецификаций, null-параметры (6 кейсов) |
+| `CardEncryptionUtilTest` | Unit | AES, маскирование, Luhn на генерации (6 кейсов) |
+| `CardNumberValidatorTest` | Unit | Алгоритм Луна: валидные/невалидные номера (15 кейсов) |
+| `AuthControllerTest` | Unit | HTTP-слой: статусы, валидация, JSON (7 кейсов) |
+| `CardServiceIntegrationTest` | Integration | Полный цикл с реальным PostgreSQL (6 кейсов) |
+| `AuthIntegrationTest` | Integration | E2E: register → login → refresh → rotation (3 кейса) |
 
 ---
 
 ## 🗄 Миграции Liquibase
 
-| Файл                           | Описание                           |
-|--------------------------------|------------------------------------|
-| `001-create-users.xml`         | Таблица `users`                    |
-| `002-create-cards.xml`         | Таблица `cards` + индексы          |
-| `003-insert-admin.xml`         | Дефолтный администратор            |
-| `004-create-refresh-tokens.xml`| Таблица `refresh_tokens` + индексы |
+| Файл                            | Описание                           |
+|---------------------------------|------------------------------------|
+| `001-create-users.xml`          | Таблица `users`                    |
+| `002-create-cards.xml`          | Таблица `cards` + индексы          |
+| `003-insert-admin.xml`          | Дефолтный администратор            |
+| `004-create-refresh-tokens.xml` | Таблица `refresh_tokens` + индексы |
 
 ---
 
 ## ⚙️ Переменные окружения
 
-| Переменная               | По умолчанию              | Описание                    |
-|--------------------------|---------------------------|-----------------------------|
-| `DB_USERNAME`            | `postgres`                | Пользователь БД             |
-| `DB_PASSWORD`            | `postgres`                | Пароль БД                   |
-| `JWT_SECRET`             | `404E635266...` (Base64)  | Секрет для подписи JWT      |
-| `CARD_ENCRYPTION_SECRET` | `MySecretKey12345...`     | Ключ AES шифрования (32 б)  |
+| Переменная               | По умолчанию             | Описание                   |
+|--------------------------|--------------------------|----------------------------|
+| `DB_USERNAME`            | `postgres`               | Пользователь БД            |
+| `DB_PASSWORD`            | `postgres`               | Пароль БД                  |
+| `JWT_SECRET`             | `404E635266...` (Base64) | Секрет для подписи JWT     |
+| `CARD_ENCRYPTION_SECRET` | `MySecretKey12345...`    | Ключ AES шифрования (32 б) |
 
 > ⚠️ В продакшене обязательно смените все секреты на криптографически стойкие значения!
 
