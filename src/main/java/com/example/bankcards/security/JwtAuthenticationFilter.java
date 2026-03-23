@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -33,16 +35,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+        String traceId = UUID.randomUUID().toString().substring(0, 8);
+        MDC.put("traceId", traceId);
+        response.setHeader("X-Trace-Id", traceId);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        final String jwt = authHeader.substring(7);
         try {
+            final String authHeader = request.getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            final String jwt = authHeader.substring(7);
             final String username = jwtUtil.extractUsername(jwt);
+
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 if (jwtUtil.isTokenValid(jwt, userDetails)) {
@@ -51,15 +57,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    MDC.put("username", username);
                     log.debug("JWT authenticated: username='{}', uri='{}'", username, request.getRequestURI());
                 } else {
                     log.warn("Invalid JWT token for username='{}', uri='{}'", username, request.getRequestURI());
                 }
             }
+
+            filterChain.doFilter(request, response);
+
         } catch (Exception e) {
             log.warn("JWT authentication failed for uri='{}': {}", request.getRequestURI(), e.getMessage());
+            filterChain.doFilter(request, response);
+        } finally {
+            MDC.remove("traceId");
+            MDC.remove("username");
         }
-
-        filterChain.doFilter(request, response);
     }
 }
