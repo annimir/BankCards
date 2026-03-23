@@ -10,5 +10,6 @@
     <include file="classpath:db/migration/003-insert-admin.xml"/>
     <include file="classpath:db/migration/004-create-refresh-tokens.xml"/>
     <include file="classpath:db/migration/005-add-card-version.xml"/>
+    <include file="classpath:db/migration/006-add-audit-fields.xml"/>
 
 </databaseChangeLog>

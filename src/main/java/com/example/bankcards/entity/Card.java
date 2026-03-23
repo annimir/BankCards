@@ -2,6 +2,11 @@ package com.example.bankcards.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,6 +14,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cards")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,6 +52,18 @@ public class Card {
     @Version
     @Column(nullable = false)
     private Long version;
+
+    @CreatedBy
+    @Column(name = "created_by", updatable = false, length = 50)
+    private String createdBy;
+
+    @LastModifiedBy
+    @Column(name = "last_modified_by", length = 50)
+    private String lastModifiedBy;
+
+    @LastModifiedDate
+    @Column(name = "last_modified_at")
+    private LocalDateTime lastModifiedAt;
 
     @PrePersist
     protected void onCreate() {
