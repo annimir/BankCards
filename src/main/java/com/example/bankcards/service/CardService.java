@@ -4,6 +4,7 @@ import com.example.bankcards.dto.CardDTO;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
+import com.example.bankcards.event.TransferCompletedEvent;
 import com.example.bankcards.exception.CardOperationException;
 import com.example.bankcards.exception.InsufficientFundsException;
 import com.example.bankcards.exception.ResourceNotFoundException;
@@ -14,6 +15,7 @@ import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardEncryptionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -31,6 +33,7 @@ public class CardService {
     private final UserRepository userRepository;
     private final CardEncryptionUtil encryptionUtil;
     private final CardMapper cardMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ─── Admin operations ────────────────────────────────────────────────────
 
@@ -51,13 +54,12 @@ public class CardService {
                 .build();
 
         Card saved = cardRepository.save(card);
-        log.info("Card created: id={}, masked={}, ownerId={}", saved.getId(), saved.getCardNumberMasked(), owner.getId());
+        log.info("Card created: id={}, masked={}", saved.getId(), saved.getCardNumberMasked());
         return cardMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public Page<CardDTO.CardResponse> getAllCards(CardStatus status, Long ownerId, Pageable pageable) {
-        log.debug("Admin fetching cards: status={}, ownerId={}", status, ownerId);
         return cardRepository.findAll(CardSpecification.forAdmin(status, ownerId), pageable)
                 .map(cardMapper::toResponse);
     }
@@ -132,6 +134,7 @@ public class CardService {
         if (request.getFromCardId().equals(request.getToCardId())) {
             throw new CardOperationException("Source and destination cards must be different");
         }
+
         Card fromCard = cardRepository.findByIdAndOwnerId(request.getFromCardId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Source card not found or does not belong to you"));
         Card toCard = cardRepository.findByIdAndOwnerId(request.getToCardId(), userId)
@@ -143,13 +146,22 @@ public class CardService {
             throw new CardOperationException("Destination card is not active");
         if (fromCard.getBalance().compareTo(request.getAmount()) < 0)
             throw new InsufficientFundsException(
-                    "Insufficient funds. Available: " + fromCard.getBalance() + ", requested: " + request.getAmount());
+                    "Insufficient funds. Available: " + fromCard.getBalance() +
+                            ", requested: " + request.getAmount());
 
         fromCard.setBalance(fromCard.getBalance().subtract(request.getAmount()));
         toCard.setBalance(toCard.getBalance().add(request.getAmount()));
+
         cardRepository.save(fromCard);
         cardRepository.save(toCard);
-        log.info("Transfer completed: {} from card={} to card={}", request.getAmount(), fromCard.getId(), toCard.getId());
+
+        log.info("Transfer completed: {} from card={} to card={}",
+                request.getAmount(), fromCard.getId(), toCard.getId());
+
+        eventPublisher.publishEvent(new TransferCompletedEvent(
+                this, fromCard.getId(), toCard.getId(), userId,
+                request.getAmount(), fromCard.getBalance()
+        ));
     }
 
     private Card findById(Long id) {

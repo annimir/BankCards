@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="007-create-transfer-history" author="bankcards">
+        <createTable tableName="transfer_history">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="from_card_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_transfer_history_from_card"
+                             references="cards(id)"/>
+            </column>
+            <column name="to_card_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_transfer_history_to_card"
+                             references="cards(id)"/>
+            </column>
+            <column name="owner_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_transfer_history_owner"
+                             references="users(id)"/>
+            </column>
+            <column name="amount" type="DECIMAL(15,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="balance_after" type="DECIMAL(15,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="occurred_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="transfer_history" indexName="idx_transfer_history_owner_id">
+            <column name="owner_id"/>
+        </createIndex>
+        <createIndex tableName="transfer_history" indexName="idx_transfer_history_from_card">
+            <column name="from_card_id"/>
+        </createIndex>
+        <createIndex tableName="transfer_history" indexName="idx_transfer_history_occurred_at">
+            <column name="occurred_at"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

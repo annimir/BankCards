@@ -27,8 +27,6 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Lombok will NOT generate getUsername() / getPassword() for these two —
-    // we override them explicitly so they satisfy both JPA and UserDetails.
     @Getter(AccessLevel.NONE)
     @Column(unique = true, nullable = false, length = 50)
     private String username;
@@ -44,6 +42,7 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -52,6 +51,8 @@ public class User implements UserDetails {
 
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Card> cards;
+
+    // ── Audit fields ──────────────────────────────────────────────────────────
 
     @LastModifiedBy
     @Column(name = "last_modified_by", length = 50)
@@ -66,6 +67,8 @@ public class User implements UserDetails {
         createdAt = LocalDateTime.now();
     }
 
+    // ── UserDetails ───────────────────────────────────────────────────────────
+
     @Override
     public String getUsername() { return username; }
 
@@ -77,15 +80,8 @@ public class User implements UserDetails {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-    @Override
-    public boolean isAccountNonExpired() { return true; }
-
-    @Override
-    public boolean isAccountNonLocked() { return true; }
-
-    @Override
-    public boolean isCredentialsNonExpired() { return true; }
-
-    @Override
-    public boolean isEnabled() { return enabled; }
+    @Override public boolean isAccountNonExpired()     { return true; }
+    @Override public boolean isAccountNonLocked()      { return true; }
+    @Override public boolean isCredentialsNonExpired() { return true; }
+    @Override public boolean isEnabled()               { return enabled; }
 }

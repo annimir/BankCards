@@ -7,6 +7,7 @@ import com.example.bankcards.entity.User;
 import com.example.bankcards.exception.CardOperationException;
 import com.example.bankcards.exception.InsufficientFundsException;
 import com.example.bankcards.exception.ResourceNotFoundException;
+import com.example.bankcards.mapper.CardMapper;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardEncryptionUtil;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -34,12 +36,15 @@ class CardServiceTest {
     @Mock private CardRepository cardRepository;
     @Mock private UserRepository userRepository;
     @Mock private CardEncryptionUtil encryptionUtil;
+    @Mock private CardMapper cardMapper;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private CardService cardService;
 
     private User owner;
     private Card activeCard;
     private Card secondCard;
+    private CardDTO.CardResponse stubResponse;
 
     @BeforeEach
     void setUp() {
@@ -68,6 +73,16 @@ class CardServiceTest {
                 .status(CardStatus.ACTIVE)
                 .balance(new BigDecimal("500.00"))
                 .build();
+
+        // Stub-ответ маппера — возвращается при toResponse(any card)
+        stubResponse = CardDTO.CardResponse.builder()
+                .id(1L)
+                .cardNumberMasked("**** **** **** 1234")
+                .status(CardStatus.ACTIVE)
+                .balance(new BigDecimal("1000.00"))
+                .ownerId(1L)
+                .ownerUsername("testuser")
+                .build();
     }
 
     // ─── createCard ───────────────────────────────────────────────────────────
@@ -81,7 +96,7 @@ class CardServiceTest {
         request.setInitialBalance(BigDecimal.valueOf(500));
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
-        when(encryptionUtil.generateCardNumber()).thenReturn("1234567890123456");
+        when(encryptionUtil.generateCardNumber()).thenReturn("4532015112830366");
         when(encryptionUtil.encrypt(any())).thenReturn("encrypted");
         when(encryptionUtil.mask(any())).thenReturn("**** **** **** 3456");
         when(cardRepository.save(any())).thenAnswer(inv -> {
@@ -89,13 +104,14 @@ class CardServiceTest {
             c.setId(10L);
             return c;
         });
+        when(cardMapper.toResponse(any(Card.class))).thenReturn(stubResponse);
 
         CardDTO.CardResponse response = cardService.createCard(request);
 
         assertThat(response).isNotNull();
-        assertThat(response.getCardNumberMasked()).isEqualTo("**** **** **** 3456");
-        assertThat(response.getStatus()).isEqualTo(CardStatus.ACTIVE);
-        verify(cardRepository, times(1)).save(any(Card.class));
+        assertThat(response.getCardNumberMasked()).isEqualTo("**** **** **** 1234");
+        verify(cardRepository).save(any(Card.class));
+        verify(cardMapper).toResponse(any(Card.class));
     }
 
     @Test
@@ -117,8 +133,11 @@ class CardServiceTest {
     @Test
     @DisplayName("blockCard: should block active card")
     void blockCard_Success() {
+        CardDTO.CardResponse blockedResponse = CardDTO.CardResponse.builder()
+                .id(1L).status(CardStatus.BLOCKED).build();
         when(cardRepository.findById(1L)).thenReturn(Optional.of(activeCard));
         when(cardRepository.save(any())).thenReturn(activeCard);
+        when(cardMapper.toResponse(any(Card.class))).thenReturn(blockedResponse);
 
         CardDTO.CardResponse response = cardService.blockCard(1L);
 
@@ -140,9 +159,12 @@ class CardServiceTest {
     @Test
     @DisplayName("activateCard: should activate blocked card")
     void activateCard_Success() {
+        CardDTO.CardResponse activeResponse = CardDTO.CardResponse.builder()
+                .id(1L).status(CardStatus.ACTIVE).build();
         activeCard.setStatus(CardStatus.BLOCKED);
         when(cardRepository.findById(1L)).thenReturn(Optional.of(activeCard));
         when(cardRepository.save(any())).thenReturn(activeCard);
+        when(cardMapper.toResponse(any(Card.class))).thenReturn(activeResponse);
 
         CardDTO.CardResponse response = cardService.activateCard(1L);
 
@@ -163,7 +185,7 @@ class CardServiceTest {
     // ─── transfer ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("transfer: should transfer funds between two active cards")
+    @DisplayName("transfer: should transfer funds and publish event")
     void transfer_Success() {
         CardDTO.TransferRequest request = new CardDTO.TransferRequest();
         request.setFromCardId(1L);
@@ -179,6 +201,8 @@ class CardServiceTest {
         assertThat(activeCard.getBalance()).isEqualByComparingTo("700.00");
         assertThat(secondCard.getBalance()).isEqualByComparingTo("800.00");
         verify(cardRepository, times(2)).save(any(Card.class));
+        // Проверяем что событие было опубликовано
+        verify(eventPublisher).publishEvent(any());
     }
 
     @Test
@@ -194,10 +218,11 @@ class CardServiceTest {
 
         assertThatThrownBy(() -> cardService.transfer(1L, request))
                 .isInstanceOf(InsufficientFundsException.class);
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("transfer: should throw CardOperationException when transferring to same card")
+    @DisplayName("transfer: should throw CardOperationException when same card")
     void transfer_SameCard() {
         CardDTO.TransferRequest request = new CardDTO.TransferRequest();
         request.setFromCardId(1L);
@@ -230,8 +255,11 @@ class CardServiceTest {
     @Test
     @DisplayName("requestBlock: user can request blocking their own active card")
     void requestBlock_Success() {
+        CardDTO.CardResponse blockedResponse = CardDTO.CardResponse.builder()
+                .id(1L).status(CardStatus.BLOCKED).build();
         when(cardRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.of(activeCard));
         when(cardRepository.save(any())).thenReturn(activeCard);
+        when(cardMapper.toResponse(any(Card.class))).thenReturn(blockedResponse);
 
         CardDTO.CardResponse response = cardService.requestBlock(1L, 1L);
 

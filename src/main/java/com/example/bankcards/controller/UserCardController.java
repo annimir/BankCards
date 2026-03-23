@@ -1,10 +1,12 @@
 package com.example.bankcards.controller;
 
 import com.example.bankcards.dto.CardDTO;
+import com.example.bankcards.dto.TransferHistoryDTO;
 import com.example.bankcards.dto.UserDTO;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.service.CardService;
+import com.example.bankcards.service.TransferHistoryService;
 import com.example.bankcards.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,6 +29,9 @@ public class UserCardController {
 
     private final CardService cardService;
     private final UserService userService;
+    private final TransferHistoryService transferHistoryService;
+
+    // ─── Profile ─────────────────────────────────────────────────────────────
 
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
@@ -41,6 +46,8 @@ public class UserCardController {
             @Valid @RequestBody UserDTO.UpdateUserRequest request) {
         return ResponseEntity.ok(userService.updateMyProfile(user.getUsername(), request));
     }
+
+    // ─── Cards ────────────────────────────────────────────────────────────────
 
     @GetMapping("/cards")
     @Operation(summary = "Get my cards with optional filters and pagination")
@@ -75,5 +82,26 @@ public class UserCardController {
             @Valid @RequestBody CardDTO.TransferRequest request) {
         cardService.transfer(user.getId(), request);
         return ResponseEntity.ok().build();
+    }
+
+    // ─── Transfer history ─────────────────────────────────────────────────────
+
+    @GetMapping("/transfers")
+    @Operation(summary = "Get my transfer history (all cards, newest first)")
+    public ResponseEntity<Page<TransferHistoryDTO>> getMyTransferHistory(
+            @AuthenticationPrincipal User user,
+            @PageableDefault(size = 20, sort = "occurredAt") Pageable pageable) {
+        return ResponseEntity.ok(transferHistoryService.getMyHistory(user.getId(), pageable));
+    }
+
+    @GetMapping("/cards/{id}/transfers")
+    @Operation(summary = "Get transfer history for a specific card")
+    public ResponseEntity<Page<TransferHistoryDTO>> getCardTransferHistory(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @PageableDefault(size = 20) Pageable pageable) {
+        // Проверяем что карта принадлежит пользователю
+        cardService.getMyCard(id, user.getId());
+        return ResponseEntity.ok(transferHistoryService.getCardHistory(id, pageable));
     }
 }

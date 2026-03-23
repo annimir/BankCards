@@ -1,5 +1,6 @@
 package com.example.bankcards.integration;
 
+import org.junit.jupiter.api.Tag;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -8,9 +9,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Базовый класс для интеграционных тестов с реальным PostgreSQL.
- * Контейнер запускается один раз на все тесты (static) — экономит время.
- * Наследники получают готовый datasource через @DynamicPropertySource.
+ * Помечен тегом "integration" — пропускается без Docker:
+ *   mvn test -DexcludedGroups=integration
+ * Запуск только интеграционных:
+ *   mvn test -Dgroups=integration
  */
+@Tag("integration")
 @Testcontainers
 public abstract class PostgreSQLContainerBase {
 
@@ -19,7 +23,7 @@ public abstract class PostgreSQLContainerBase {
             .withDatabaseName("bankcards_test")
             .withUsername("test")
             .withPassword("test")
-            .withReuse(true);  // повторно использует контейнер между тестовыми классами
+            .withReuse(true);
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {

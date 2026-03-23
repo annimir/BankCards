@@ -83,7 +83,7 @@
             <version>2.3.0</version>
         </dependency>
 
-        <!-- MapStruct — генерирует маперы DTO <-> Entity -->
+        <!-- MapStruct — генерирует маперы DTO <-> Entity при компиляции -->
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
@@ -156,7 +156,7 @@
                     </excludes>
                 </configuration>
             </plugin>
-            <!-- MapStruct + Lombok должны обрабатываться в правильном порядке -->
+            <!-- MapStruct + Lombok: правильный порядок annotation processor'ов -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -172,7 +172,6 @@
                             <artifactId>mapstruct-processor</artifactId>
                             <version>${mapstruct.version}</version>
                         </path>
-                        <!-- Lombok + MapStruct bridge -->
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok-mapstruct-binding</artifactId>
