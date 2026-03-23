@@ -14,7 +14,8 @@ docker-compose up --build
 ```
 
 Приложение: `http://localhost:8080`  
-Swagger UI: `http://localhost:8080/swagger-ui.html`
+Swagger UI: `http://localhost:8080/swagger-ui.html`  
+Health check: `http://localhost:8080/actuator/health`
 
 ---
 
@@ -81,23 +82,25 @@ Authorization: Bearer <ACCESS_TOKEN>
 
 ### Auth
 
-| Method | URL                   | Описание                                            | Auth   |
-|--------|-----------------------|-----------------------------------------------------|--------|
-| POST   | `/api/auth/register`  | Регистрация — возвращает оба токена                 | —      |
-| POST   | `/api/auth/login`     | Логин — возвращает оба токена                       | —      |
-| POST   | `/api/auth/refresh`   | Ротация токенов: старый отзывается, выдаётся новая пара | —  |
-| POST   | `/api/auth/logout`    | Отзыв всех refresh токенов пользователя             | Bearer |
+| Method | URL                   | Описание                                              | Auth   |
+|--------|-----------------------|-------------------------------------------------------|--------|
+| POST   | `/api/auth/register`  | Регистрация — возвращает оба токена                   | —      |
+| POST   | `/api/auth/login`     | Логин — возвращает оба токена                         | —      |
+| POST   | `/api/auth/refresh`   | Ротация токенов: старый отзывается, выдаётся новая пара | —    |
+| POST   | `/api/auth/logout`    | Отзыв всех refresh токенов пользователя               | Bearer |
 
 ### User (роль USER)
 
-| Method | URL                          | Описание                         |
-|--------|------------------------------|----------------------------------|
-| GET    | `/api/user/me`               | Профиль текущего пользователя    |
-| PUT    | `/api/user/me`               | Обновить email / пароль          |
-| GET    | `/api/user/cards`            | Мои карты (фильтр + пагинация)   |
-| GET    | `/api/user/cards/{id}`       | Одна карта по ID                 |
-| POST   | `/api/user/cards/{id}/block` | Запросить блокировку своей карты |
-| POST   | `/api/user/cards/transfer`   | Перевод между своими картами     |
+| Method | URL                            | Описание                              |
+|--------|--------------------------------|---------------------------------------|
+| GET    | `/api/user/me`                 | Профиль текущего пользователя         |
+| PUT    | `/api/user/me`                 | Обновить email / пароль               |
+| GET    | `/api/user/cards`              | Мои карты (фильтр + пагинация)        |
+| GET    | `/api/user/cards/{id}`         | Одна карта по ID                      |
+| POST   | `/api/user/cards/{id}/block`   | Запросить блокировку своей карты      |
+| POST   | `/api/user/cards/transfer`     | Перевод между своими картами          |
+| GET    | `/api/user/transfers`          | История всех моих переводов           |
+| GET    | `/api/user/cards/{id}/transfers` | История переводов по конкретной карте |
 
 ### Admin — Cards (роль ADMIN)
 
@@ -121,6 +124,14 @@ Authorization: Bearer <ACCESS_TOKEN>
 | PUT    | `/api/admin/users/{id}/enable`  | Активировать аккаунт   |
 | PUT    | `/api/admin/users/{id}/disable` | Деактивировать аккаунт |
 
+### Monitoring
+
+| URL                     | Описание                                       |
+|-------------------------|------------------------------------------------|
+| `/actuator/health`      | Статус приложения + статистика карт            |
+| `/actuator/info`        | Версия и описание приложения                   |
+| `/actuator/metrics`     | Метрики JVM и HTTP (требует аутентификации)    |
+
 ---
 
 ## 📦 Примеры запросов
@@ -133,7 +144,7 @@ curl -X POST http://localhost:8080/api/auth/register \
   -d '{"username":"john","email":"john@mail.com","password":"Password1!"}'
 ```
 
-Ответ:
+Ответ (RFC 7807 для ошибок, стандартный JSON для успеха):
 
 ```json
 {
@@ -152,15 +163,6 @@ curl -X POST http://localhost:8080/api/auth/refresh \
   -d '{"refreshToken":"550e8400-e29b-41d4-a716-446655440000"}'
 ```
 
-### Создание карты (admin)
-
-```bash
-curl -X POST http://localhost:8080/api/admin/cards \
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"ownerId":2,"expiryDate":"2028-12-31","initialBalance":1000.00}'
-```
-
 ### Перевод средств (user)
 
 ```bash
@@ -170,16 +172,35 @@ curl -X POST http://localhost:8080/api/user/cards/transfer \
   -d '{"fromCardId":1,"toCardId":2,"amount":500.00}'
 ```
 
-### Фильтрация карт с пагинацией
+### История переводов
 
 ```bash
-# Мои активные карты, вторая страница
-curl "http://localhost:8080/api/user/cards?status=ACTIVE&page=1&size=5&sort=createdAt,desc" \
+curl "http://localhost:8080/api/user/transfers?page=0&size=20" \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
 
-# Все карты конкретного пользователя (admin)
-curl "http://localhost:8080/api/admin/cards?ownerId=2&status=BLOCKED" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+### Health check
+
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+```json
+{
+  "status": "UP",
+  "components": {
+    "cardSystem": {
+      "status": "UP",
+      "details": {
+        "cards.total": 150,
+        "cards.active": 142,
+        "cards.expired": 8,
+        "tokens.stale": 0
+      }
+    },
+    "db": { "status": "UP" }
+  }
+}
 ```
 
 ---
@@ -188,19 +209,23 @@ curl "http://localhost:8080/api/admin/cards?ownerId=2&status=BLOCKED" \
 
 ```
 src/main/java/com/example/bankcards/
-├── config/          # SecurityConfig, OpenApiConfig
+├── config/          # SecurityConfig, OpenApiConfig, AuditConfig
 ├── controller/      # AuthController, AdminCardController,
 │                    # AdminUserController, UserCardController
-├── dto/             # AuthDto, CardDto, UserDto
-├── entity/          # User, Card, RefreshToken, Role, CardStatus
-├── exception/       # GlobalExceptionHandler + кастомные исключения
+├── dto/             # AuthDto, CardDto, UserDto, TransferHistoryDto
+├── entity/          # User, Card, RefreshToken, TransferHistory,
+│                    # Role, CardStatus
+├── event/           # TransferCompletedEvent, TransferEventListener
+├── exception/       # GlobalExceptionHandler (RFC 7807 ProblemDetail)
+├── health/          # CardSystemHealthIndicator
 ├── mapper/          # CardMapper, UserMapper (MapStruct)
 ├── repository/      # CardRepository, UserRepository,
-│                    # RefreshTokenRepository, CardSpecification
-├── security/        # JwtAuthenticationFilter, RateLimitingFilter
+│                    # RefreshTokenRepository, TransferHistoryRepository,
+│                    # CardSpecification
+├── security/        # JwtAuthenticationFilter (MDC), RateLimitingFilter
 ├── service/         # AuthService, CardService, UserService,
-│                    # RefreshTokenService, CardExpiryScheduler,
-│                    # UserDetailsServiceImpl
+│                    # RefreshTokenService, TransferHistoryService,
+│                    # CardExpiryScheduler, UserDetailsServiceImpl
 ├── util/            # JwtUtil, CardEncryptionUtil
 └── validation/      # @ValidCardNumber, CardNumberValidator (Luhn)
 ```
@@ -210,13 +235,44 @@ src/main/java/com/example/bankcards/
 ## 🔒 Безопасность
 
 - Номера карт **шифруются AES** в БД — в ответах только маска `**** **** **** 1234`
-- Генерируемые номера карт проходят **алгоритм Луна** (контрольная цифра вычисляется)
+- Генерируемые номера проходят **алгоритм Луна** (контрольная цифра вычисляется)
 - Пароли хэшируются **BCrypt**
 - **Access Token** (JWT HS256) — срок жизни 24 часа
-- **Refresh Token** (UUID) — срок жизни 7 дней, хранится в БД, rotation при обновлении
-- **Rate Limiting** (Bucket4j) — 10 запросов в минуту на IP для `/login` и `/register`
+- **Refresh Token** (UUID) — срок жизни 7 дней, rotation при обновлении
+- **Rate Limiting** (Bucket4j) — 10 запросов/мин на IP для `/login` и `/register`
+- **Optimistic Locking** (`@Version`) — защита от race condition при параллельных переводах
 - Ролевой доступ через **Spring Security** + `@PreAuthorize`
-- Пользователь видит **только свои карты**
+- **MDC трассировка** — каждый запрос имеет уникальный `traceId` в логах и заголовке `X-Trace-Id`
+
+---
+
+## 📊 Ошибки (RFC 7807 ProblemDetail)
+
+Все ошибки возвращаются в стандартном формате RFC 7807:
+
+```json
+{
+  "type": "https://bankcards.example.com/errors/insufficient-funds",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "Insufficient funds. Available: 100.00, requested: 500.00"
+}
+```
+
+Для ошибок валидации добавляется поле `errors`:
+
+```json
+{
+  "type": "https://bankcards.example.com/errors/validation-error",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "Validation failed",
+  "errors": {
+    "username": "Username is required",
+    "email": "Invalid email format"
+  }
+}
+```
 
 ---
 
@@ -224,21 +280,25 @@ src/main/java/com/example/bankcards/
 
 | Задача | Расписание | Описание |
 |--------|-----------|----------|
-| `CardExpiryScheduler#expireOutdatedCards` | `0 0 1 * * *` (01:00) | Переводит ACTIVE карты с истёкшим `expiryDate` в статус EXPIRED |
-| `CardExpiryScheduler#expireOutdatedBlockedCards` | `0 5 1 * * *` (01:05) | То же для BLOCKED карт |
-| `RefreshTokenService#cleanupExpiredTokens` | `0 0 3 * * *` (03:00) | Удаляет из БД истёкшие и отозванные refresh токены |
+| `CardExpiryScheduler#expireOutdatedCards` | 01:00 ежедневно | ACTIVE карты с истёкшим `expiryDate` → EXPIRED |
+| `CardExpiryScheduler#expireOutdatedBlockedCards` | 01:05 ежедневно | BLOCKED карты с истёкшим `expiryDate` → EXPIRED |
+| `RefreshTokenService#cleanupExpiredTokens` | 03:00 ежедневно | Удаляет протухшие refresh токены из БД |
 
 ---
 
 ## 🔍 Фильтрация (JPA Specification)
-
-Фильтрация карт построена через `CardSpecification`. Каждый параметр независим — `null` игнорируется.
 
 | Параметр       | Тип          | Применимость |
 |----------------|--------------|--------------|
 | `status`       | `CardStatus` | admin + user |
 | `ownerId`      | `Long`       | только admin |
 | `maskedNumber` | `String`     | только user  |
+
+---
+
+## 📋 Аудит
+
+Поля `createdBy`, `lastModifiedBy`, `lastModifiedAt` заполняются автоматически через Spring Data Auditing (`@EnableJpaAuditing`). `AuditorAware` берёт username из `SecurityContext` — при системных операциях используется значение `"system"`.
 
 ---
 
@@ -257,27 +317,30 @@ mvn test -Dgroups="!integration"
 
 | Класс | Тип | Что покрывает |
 |-------|-----|---------------|
-| `CardServiceTest` | Unit | Создание, блокировка, активация, переводы (10 кейсов) |
-| `AuthServiceTest` | Unit | Регистрация, логин, refresh, logout (8 кейсов) |
-| `RefreshTokenServiceTest` | Unit | Создание, валидация, ротация, очистка (6 кейсов) |
-| `CardExpirySchedulerTest` | Unit | Джоб истечения ACTIVE и BLOCKED карт (4 кейса) |
-| `CardSpecificationTest` | Unit | Сборка спецификаций, null-параметры (6 кейсов) |
-| `CardEncryptionUtilTest` | Unit | AES, маскирование, Luhn на генерации (6 кейсов) |
-| `CardNumberValidatorTest` | Unit | Алгоритм Луна: валидные/невалидные номера (15 кейсов) |
-| `AuthControllerTest` | Unit | HTTP-слой: статусы, валидация, JSON (7 кейсов) |
-| `CardServiceIntegrationTest` | Integration | Полный цикл с реальным PostgreSQL (6 кейсов) |
-| `AuthIntegrationTest` | Integration | E2E: register → login → refresh → rotation (3 кейса) |
+| `CardServiceTest` | Unit | Создание, блокировка, активация, переводы |
+| `AuthServiceTest` | Unit | Регистрация, логин, refresh, logout |
+| `RefreshTokenServiceTest` | Unit | Создание, валидация, ротация, очистка |
+| `CardExpirySchedulerTest` | Unit | Джоб истечения карт |
+| `CardSpecificationTest` | Unit | Сборка спецификаций, null-параметры |
+| `CardEncryptionUtilTest` | Unit | AES, маскирование, Luhn на генерации |
+| `CardNumberValidatorTest` | Unit | Алгоритм Луна: валидные/невалидные номера |
+| `AuthControllerTest` | Unit | HTTP-слой: статусы, валидация, JSON |
+| `CardServiceIntegrationTest` | Integration | Полный цикл с реальным PostgreSQL |
+| `AuthIntegrationTest` | Integration | E2E: register → login → refresh → rotation |
 
 ---
 
 ## 🗄 Миграции Liquibase
 
-| Файл                            | Описание                           |
-|---------------------------------|------------------------------------|
-| `001-create-users.xml`          | Таблица `users`                    |
-| `002-create-cards.xml`          | Таблица `cards` + индексы          |
-| `003-insert-admin.xml`          | Дефолтный администратор            |
-| `004-create-refresh-tokens.xml` | Таблица `refresh_tokens` + индексы |
+| Файл                            | Описание                                      |
+|---------------------------------|-----------------------------------------------|
+| `001-create-users.xml`          | Таблица `users`                               |
+| `002-create-cards.xml`          | Таблица `cards` + индексы                     |
+| `003-insert-admin.xml`          | Дефолтный администратор                       |
+| `004-create-refresh-tokens.xml` | Таблица `refresh_tokens` + индексы            |
+| `005-add-card-version.xml`      | Колонка `version` для optimistic locking      |
+| `006-add-audit-fields.xml`      | Колонки `created_by`, `last_modified_by/at`   |
+| `007-create-transfer-history.xml` | Таблица `transfer_history` + индексы        |
 
 ---
 
@@ -290,7 +353,7 @@ mvn test -Dgroups="!integration"
 | `JWT_SECRET`             | `404E635266...` (Base64) | Секрет для подписи JWT     |
 | `CARD_ENCRYPTION_SECRET` | `MySecretKey12345...`    | Ключ AES шифрования (32 б) |
 
-> ⚠️ В продакшене обязательно смените все секреты на криптографически стойкие значения!
+> ⚠️ В продакшене обязательно смените все секреты!
 
 ---
 
