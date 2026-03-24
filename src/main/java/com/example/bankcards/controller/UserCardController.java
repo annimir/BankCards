@@ -1,12 +1,10 @@
 package com.example.bankcards.controller;
 
 import com.example.bankcards.dto.CardDTO;
-import com.example.bankcards.dto.TransferHistoryDTO;
 import com.example.bankcards.dto.UserDTO;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.service.CardService;
-import com.example.bankcards.service.TransferHistoryService;
 import com.example.bankcards.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -25,8 +23,8 @@ import org.springframework.web.bind.annotation.*;
  *
  * <p>Пользователь видит и управляет только своими картами — владелец
  * определяется из JWT-токена через {@code @AuthenticationPrincipal}.
- * Поддерживает просмотр карт, запрос блокировки, переводы между своими картами
- * и просмотр истории переводов.
+ * Поддерживает просмотр карт, запрос блокировки и переводы между своими картами.
+ * История переводов вынесена в {@link TransferHistoryController}.
  */
 @RestController
 @RequestMapping("/api/user")
@@ -37,7 +35,6 @@ public class UserCardController {
 
     private final CardService cardService;
     private final UserService userService;
-    private final TransferHistoryService transferHistoryService;
 
     // ─── Profile ─────────────────────────────────────────────────────────────
 
@@ -64,7 +61,8 @@ public class UserCardController {
             @RequestParam(required = false) CardStatus status,
             @RequestParam(required = false) String maskedNumber,
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(cardService.getMyCards(user.getId(), status, maskedNumber, pageable));
+        return ResponseEntity.ok(
+                cardService.getMyCards(user.getId(), status, maskedNumber, pageable));
     }
 
     @GetMapping("/cards/{id}")
@@ -90,26 +88,5 @@ public class UserCardController {
             @Valid @RequestBody CardDTO.TransferRequest request) {
         cardService.transfer(user.getId(), request);
         return ResponseEntity.ok().build();
-    }
-
-    // ─── Transfer history ─────────────────────────────────────────────────────
-
-    @GetMapping("/transfers")
-    @Operation(summary = "Get my transfer history (all cards, newest first)")
-    public ResponseEntity<Page<TransferHistoryDTO>> getMyTransferHistory(
-            @AuthenticationPrincipal User user,
-            @PageableDefault(size = 20, sort = "occurredAt") Pageable pageable) {
-        return ResponseEntity.ok(transferHistoryService.getMyHistory(user.getId(), pageable));
-    }
-
-    @GetMapping("/cards/{id}/transfers")
-    @Operation(summary = "Get transfer history for a specific card")
-    public ResponseEntity<Page<TransferHistoryDTO>> getCardTransferHistory(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long id,
-            @PageableDefault(size = 20) Pageable pageable) {
-        // Проверяем что карта принадлежит пользователю
-        cardService.getMyCard(id, user.getId());
-        return ResponseEntity.ok(transferHistoryService.getCardHistory(id, pageable));
     }
 }

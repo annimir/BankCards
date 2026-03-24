@@ -2,6 +2,8 @@ package com.example.bankcards.service;
 
 import com.example.bankcards.dto.TransferHistoryDTO;
 import com.example.bankcards.entity.TransferHistory;
+import com.example.bankcards.exception.ResourceNotFoundException;
+import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.TransferHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransferHistoryService {
 
     private final TransferHistoryRepository transferHistoryRepository;
+    private final CardRepository cardRepository;
 
     @Transactional(readOnly = true)
     public Page<TransferHistoryDTO> getMyHistory(Long userId, Pageable pageable) {
@@ -33,8 +36,12 @@ public class TransferHistoryService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TransferHistoryDTO> getCardHistory(Long cardId, Pageable pageable) {
-        log.debug("Fetching transfer history for cardId={}", cardId);
+    public Page<TransferHistoryDTO> getCardHistory(Long cardId, Long userId, Pageable pageable) {
+        log.debug("Fetching transfer history for cardId={}, userId={}", cardId, userId);
+        // Проверяем что карта принадлежит пользователю
+        if (!cardRepository.existsByIdAndOwnerId(cardId, userId)) {
+            throw new ResourceNotFoundException("Card not found or does not belong to you");
+        }
         return transferHistoryRepository
                 .findByFromCardIdOrToCardIdOrderByOccurredAtDesc(cardId, cardId, pageable)
                 .map(this::toDto);
