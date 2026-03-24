@@ -13,6 +13,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+/**
+ * Утилита генерации и валидации JWT-токенов.
+ *
+ * <p>Использует алгоритм HS256 с ключом из {@code jwt.secret}.
+ * Время жизни access токена задаётся через {@code jwt.expiration} (в миллисекундах).
+ *
+ * <p>Извлечение username из токена ({@code extractUsername}) используется в
+ * {@link com.example.bankcards.security.JwtAuthenticationFilter} для идентификации
+ * пользователя без обращения к БД.
+ */
 @Component
 public class JwtUtil {
 

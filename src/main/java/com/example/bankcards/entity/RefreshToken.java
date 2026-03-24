@@ -5,6 +5,16 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * Сущность refresh токена.
+ *
+ * <p>Хранит UUID-токен, ссылку на пользователя, время истечения и флаг отзыва.
+ * При каждом обновлении токенов (rotation) старый токен помечается {@code revoked = true},
+ * выдаётся новая пара — украденный refresh токен можно использовать только один раз.
+ *
+ * <p>Устаревшие записи удаляются ежедневно в 03:00 через
+ * {@code RefreshTokenService#cleanupExpiredTokens}.
+ */
 @Entity
 @Table(name = "refresh_tokens")
 @Getter

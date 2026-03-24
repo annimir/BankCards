@@ -9,6 +9,17 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * DTO-объекты для операций с картами.
+ *
+ * <p>Содержит вложенные классы:
+ * <ul>
+ *   <li>{@code CreateCardRequest} — параметры создания карты (владелец, срок, начальный баланс)</li>
+ *   <li>{@code CardResponse} — полное представление карты в ответе API</li>
+ *   <li>{@code TransferRequest} — параметры перевода (откуда, куда, сумма)</li>
+ * </ul>
+ * Номер карты возвращается только в маскированном виде ({@code **** **** **** 1234}).
+ */
 public class CardDTO {
 
     @Data

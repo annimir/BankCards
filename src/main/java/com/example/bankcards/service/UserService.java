@@ -14,6 +14,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Сервис управления пользователями.
+ *
+ * <p>Разделён на две зоны ответственности:
+ * <ul>
+ *   <li>Admin-операции — CRUD пользователей, включение/отключение учётных записей</li>
+ *   <li>User-операции — просмотр и редактирование собственного профиля</li>
+ * </ul>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

@@ -8,6 +8,16 @@ import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 import java.util.Random;
 
+/**
+ * Утилита шифрования и генерации номеров банковских карт.
+ *
+ * <p>Шифрование AES с ключом из {@code card.encryption.secret} (32 байта).
+ * В БД хранится Base64-закодированный зашифрованный номер, в API-ответах — только маска.
+ *
+ * <p>Генерация номеров: первые 15 цифр случайны (BIN начинается с 4 — Visa),
+ * 16-я вычисляется как контрольная сумма по алгоритму Луна — все генерируемые
+ * номера проходят валидацию {@link com.example.bankcards.validation.CardNumberValidator}.
+ */
 @Component
 public class CardEncryptionUtil {
 

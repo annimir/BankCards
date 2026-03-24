@@ -20,6 +20,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Конфигурация Spring Security.
+ *
+ * <p>Настраивает stateless JWT-аутентификацию: отключает CSRF, сессии,
+ * разрешает публичные endpoints ({@code /api/auth/**}, Swagger, Actuator health/info)
+ * и ограничивает {@code /api/admin/**} ролью {@code ADMIN}.
+ *
+ * <p>Цепочка фильтров (в порядке выполнения):
+ * <ol>
+ *   <li>{@link com.example.bankcards.security.RateLimitingFilter} — защита от брутфорса</li>
+ *   <li>{@link com.example.bankcards.security.JwtAuthenticationFilter} — валидация JWT и MDC</li>
+ * </ol>
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity

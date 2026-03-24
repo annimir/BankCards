@@ -5,6 +5,19 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * DTO-объекты для endpoints аутентификации.
+ *
+ * <p>Содержит вложенные классы:
+ * <ul>
+ *   <li>{@code RegisterRequest} — данные для регистрации нового пользователя</li>
+ *   <li>{@code LoginRequest} — логин и пароль</li>
+ *   <li>{@code AuthResponse} — пара токенов (access + refresh), username и роль</li>
+ *   <li>{@code RefreshRequest} — refresh токен для ротации</li>
+ *   <li>{@code RefreshResponse} — новая пара токенов после ротации</li>
+ *   <li>{@code LogoutRequest} — refresh токен для отзыва</li>
+ * </ul>
+ */
 public class AuthDTO {
 
     @Data

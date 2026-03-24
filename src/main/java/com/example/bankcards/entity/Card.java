@@ -12,6 +12,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Сущность банковской карты.
+ *
+ * <p>Номер карты хранится в двух форматах: {@code cardNumberEncrypted} (AES, Base64)
+ * для возможного отображения полного номера и {@code cardNumberMasked} для API-ответов.
+ *
+ * <p>{@code @Version} обеспечивает optimistic locking — защищает от race condition
+ * при параллельных переводах: второй concurrent UPDATE не найдёт строку и
+ * выбросит {@code ObjectOptimisticLockingFailureException}.
+ *
+ * <p>Аудит-поля ({@code createdBy}, {@code lastModifiedBy}, {@code lastModifiedAt})
+ * заполняются автоматически через {@code AuditingEntityListener}.
+ */
 @Entity
 @Table(name = "cards")
 @EntityListeners(AuditingEntityListener.class)

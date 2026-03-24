@@ -6,6 +6,16 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Сущность записи истории перевода.
+ *
+ * <p>Создаётся асинхронно через {@code TransferEventListener} после публикации
+ * {@code TransferCompletedEvent} — запись истории не блокирует HTTP-ответ основного запроса.
+ *
+ * <p>Хранит ссылки на карты-участники, владельца, сумму и баланс после перевода.
+ * Индексы по {@code owner_id}, {@code from_card_id} и {@code occurred_at}
+ * обеспечивают быструю выборку истории с пагинацией.
+ */
 @Entity
 @Table(name = "transfer_history")
 @Getter

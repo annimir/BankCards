@@ -13,6 +13,19 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Сущность пользователя системы.
+ *
+ * <p>Реализует {@link org.springframework.security.core.userdetails.UserDetails} —
+ * Spring Security работает с этим классом напрямую без промежуточных адаптеров.
+ *
+ * <p>{@code @Getter(AccessLevel.NONE)} на полях {@code username} и {@code password}
+ * предотвращает конфликт Lombok с интерфейсом {@code UserDetails}: без этого
+ * Lombok генерирует {@code getUsername()} и {@code getPassword()}, которые конфликтуют
+ * с явными {@code @Override}-методами.
+ *
+ * <p>Аудит-поля заполняются автоматически через {@code AuditingEntityListener}.
+ */
 @Entity
 @Table(name = "users")
 @EntityListeners(AuditingEntityListener.class)

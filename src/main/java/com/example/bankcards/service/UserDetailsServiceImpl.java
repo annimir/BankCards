@@ -8,6 +8,13 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Реализация {@code UserDetailsService} для Spring Security.
+ *
+ * <p>Загружает пользователя по username из БД для аутентификации.
+ * {@link com.example.bankcards.entity.User} реализует {@code UserDetails} напрямую,
+ * поэтому адаптер не нужен — возвращается сама сущность.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {

@@ -14,6 +14,15 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Репозиторий для работы с сущностью {@link com.example.bankcards.entity.Card}.
+ *
+ * <p>Расширяет {@code JpaSpecificationExecutor} для поддержки динамической фильтрации
+ * через {@link com.example.bankcards.repository.CardSpecification}.
+ *
+ * <p>{@code expireCards} и {@code countExpirable} используют bulk UPDATE/COUNT —
+ * загрузка сущностей в память не происходит, что критично при большом числе карт.
+ */
 public interface CardRepository extends JpaRepository<Card, Long>, JpaSpecificationExecutor<Card> {
 
     Page<Card> findByOwnerId(Long ownerId, Pageable pageable);

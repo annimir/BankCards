@@ -6,9 +6,11 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 /**
- * MapStruct mapper — генерирует реализацию при компиляции.
- * Заменяет ручной toResponse() в CardService.
- * componentModel = "spring" → бин доступен через @Autowired / @RequiredArgsConstructor.
+ * MapStruct mapper для преобразования {@link com.example.bankcards.entity.Card} в DTO.
+ *
+ * <p>Реализация генерируется MapStruct при компиляции — нулевые накладные расходы в runtime.
+ * {@code componentModel = "spring"} делает бин доступным через {@code @RequiredArgsConstructor}.
+ * Заменяет ручной {@code toResponse()} в {@code CardService}.
  */
 @Mapper(componentModel = "spring")
 public interface CardMapper {

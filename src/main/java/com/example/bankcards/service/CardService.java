@@ -24,6 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
+/**
+ * Сервис бизнес-логики банковских карт.
+ *
+ * <p>Разделён на две зоны ответственности:
+ * <ul>
+ *   <li>Admin-операции — создание, активация, блокировка, удаление карт</li>
+ *   <li>User-операции — просмотр своих карт, запрос блокировки, переводы</li>
+ * </ul>
+ *
+ * <p>После успешного перевода публикует {@link com.example.bankcards.event.TransferCompletedEvent}
+ * через {@code ApplicationEventPublisher} — запись истории происходит асинхронно
+ * в {@link com.example.bankcards.event.TransferEventListener} без блокировки ответа.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

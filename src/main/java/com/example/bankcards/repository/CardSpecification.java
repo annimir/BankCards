@@ -9,8 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * JPA Specifications for dynamic Card filtering.
- * Replaces raw JPQL with null-checks — composable and type-safe.
+ * Репозиторий для работы с сущностью {@link com.example.bankcards.entity.Card}.
+ *
+ * <p>Расширяет {@code JpaSpecificationExecutor} для поддержки динамической фильтрации
+ * через {@link com.example.bankcards.repository.CardSpecification}.
+ *
+ * <p>{@code expireCards} и {@code countExpirable} используют bulk UPDATE/COUNT —
+ * загрузка сущностей в память не происходит, что критично при большом числе карт.
  */
 public class CardSpecification {
 

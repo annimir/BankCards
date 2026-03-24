@@ -15,6 +15,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Endpoints управления пользователями для администраторов.
+ *
+ * <p>Все методы требуют роль {@code ADMIN}. Поддерживает CRUD-операции
+ * над пользователями, а также включение/отключение учётных записей.
+ */
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor

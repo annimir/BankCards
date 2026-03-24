@@ -9,6 +9,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
+/**
+ * Включает JPA Auditing — Spring Data автоматически заполняет
+ * @CreatedBy, @LastModifiedBy, @LastModifiedDate при сохранении сущностей.
+ * AuditorAware берёт текущего пользователя из SecurityContext.
+ */
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 public class AuditConfig {

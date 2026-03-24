@@ -20,6 +20,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Endpoints для аутентифицированных пользователей.
+ *
+ * <p>Пользователь видит и управляет только своими картами — владелец
+ * определяется из JWT-токена через {@code @AuthenticationPrincipal}.
+ * Поддерживает просмотр карт, запрос блокировки, переводы между своими картами
+ * и просмотр истории переводов.
+ */
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor

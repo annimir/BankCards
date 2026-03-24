@@ -15,6 +15,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Сервис аутентификации и управления токенами.
+ *
+ * <p>Реализует полный цикл работы с токенами:
+ * <ul>
+ *   <li>{@code register} — создание пользователя с ролью USER, выдача пары токенов</li>
+ *   <li>{@code login} — аутентификация через {@code AuthenticationManager}, выдача пары токенов</li>
+ *   <li>{@code refresh} — ротация: старый refresh токен отзывается, выдаётся новая пара</li>
+ *   <li>{@code logout} — отзыв всех refresh токенов пользователя (logout со всех устройств)</li>
+ * </ul>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

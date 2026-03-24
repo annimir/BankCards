@@ -8,6 +8,14 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Конфигурация SpringDoc OpenAPI / Swagger UI.
+ *
+ * <p>Определяет метаданные API (название, версия, описание) и схему аутентификации
+ * {@code bearerAuth} — позволяет вводить JWT-токен прямо в Swagger UI через кнопку Authorize.
+ *
+ * <p>Доступно на {@code /swagger-ui.html} и {@code /v3/api-docs}.
+ */
 @Configuration
 @OpenAPIDefinition(
         info = @Info(

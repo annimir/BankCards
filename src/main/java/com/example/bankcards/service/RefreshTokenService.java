@@ -14,6 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Сервис управления refresh токенами.
+ *
+ * <p>Создаёт токены с UUID и временем истечения из конфигурации ({@code jwt.refresh-expiration}).
+ * {@code verifyRefreshToken} проверяет что токен не отозван и не истёк —
+ * оба условия проверяются явно через методы сущности.
+ *
+ * <p>Плановая очистка устаревших записей выполняется ежедневно в 03:00 через
+ * {@code @Scheduled} — предотвращает неограниченный рост таблицы {@code refresh_tokens}.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

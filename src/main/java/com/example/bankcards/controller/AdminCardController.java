@@ -16,6 +16,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Endpoints управления картами для администраторов.
+ *
+ * <p>Все методы требуют роль {@code ADMIN} (проверяется через {@code @PreAuthorize}).
+ * Поддерживает создание, чтение, активацию, блокировку и удаление карт,
+ * а также фильтрацию по статусу и владельцу с пагинацией.
+ */
 @RestController
 @RequestMapping("/api/admin/cards")
 @RequiredArgsConstructor

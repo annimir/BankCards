@@ -9,6 +9,15 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+/**
+ * Репозиторий для работы с {@link com.example.bankcards.entity.RefreshToken}.
+ *
+ * <p>{@code revokeAllByUserId} используется при logout — отзывает все активные сессии
+ * пользователя одним UPDATE-запросом.
+ *
+ * <p>{@code deleteExpiredTokens} вызывается планировщиком ежедневно в 03:00
+ * для очистки устаревших записей.
+ */
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
     Optional<RefreshToken> findByToken(String token);

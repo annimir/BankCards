@@ -13,6 +13,15 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Публичные endpoints аутентификации.
+ *
+ * <p>Не требуют JWT-токена. Обрабатывают регистрацию, логин, обновление
+ * access/refresh токенов и logout (отзыв всех refresh токенов пользователя).
+ *
+ * <p>Endpoints {@code /register} и {@code /login} дополнительно защищены
+ * {@link com.example.bankcards.security.RateLimitingFilter} — 10 запросов/мин на IP.
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor

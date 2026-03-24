@@ -20,6 +20,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * Фильтр JWT-аутентификации с MDC-трассировкой.
+ *
+ * <p>Выполняется один раз на запрос ({@code OncePerRequestFilter}).
+ * Извлекает JWT из заголовка {@code Authorization: Bearer <token>},
+ * валидирует его и устанавливает {@code Authentication} в {@code SecurityContext}.
+ *
+ * <p>MDC-поля {@code traceId} (UUID) и {@code username} добавляются в начале запроса
+ * и очищаются в блоке {@code finally} — предотвращает утечку данных между запросами
+ * в условиях переиспользования потоков. {@code traceId} также возвращается клиенту
+ * в заголовке {@code X-Trace-Id}.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor

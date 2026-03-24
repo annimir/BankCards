@@ -20,10 +20,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Rate limiting фильтр на основе Bucket4j.
- * Ограничивает /api/auth/login и /api/auth/register:
- * — 10 запросов в минуту с одного IP.
- * Защищает от брутфорс-атак без внешних зависимостей (Redis и т.д.).
+ * Фильтр ограничения частоты запросов на основе Bucket4j.
+ *
+ * <p>Ограничивает {@code /api/auth/login} и {@code /api/auth/register}:
+ * 10 запросов в минуту с одного IP-адреса. Защищает от брутфорс-атак.
+ *
+ * <p>Каждый IP получает свой {@code Bucket} через {@code ConcurrentHashMap} (lazy,
+ * потокобезопасно). Не требует Redis или других внешних зависимостей.
+ * Поддерживает {@code X-Forwarded-For} для корректной работы за прокси.
  */
 @Slf4j
 @Component

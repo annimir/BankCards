@@ -11,8 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 /**
- * Scheduled job that marks cards as EXPIRED when their expiry date has passed.
- * Runs every day at 01:00 AM server time.
+ * Сервис аутентификации и управления токенами.
+ *
+ * <p>Реализует полный цикл работы с токенами:
+ * <ul>
+ *   <li>{@code register} — создание пользователя с ролью USER, выдача пары токенов</li>
+ *   <li>{@code login} — аутентификация через {@code AuthenticationManager}, выдача пары токенов</li>
+ *   <li>{@code refresh} — ротация: старый refresh токен отзывается, выдаётся новая пара</li>
+ *   <li>{@code logout} — отзыв всех refresh токенов пользователя (logout со всех устройств)</li>
+ * </ul>
  */
 @Slf4j
 @Component

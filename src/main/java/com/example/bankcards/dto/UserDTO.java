@@ -9,6 +9,16 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO-объекты для операций с пользователями.
+ *
+ * <p>Содержит вложенные классы:
+ * <ul>
+ *   <li>{@code AdminCreateUserRequest} — создание пользователя администратором (с выбором роли)</li>
+ *   <li>{@code UpdateUserRequest} — обновление email и пароля текущим пользователем</li>
+ *   <li>{@code UserResponse} — представление пользователя в ответе API (без пароля)</li>
+ * </ul>
+ */
 public class UserDTO {
 
     @Data

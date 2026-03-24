@@ -10,6 +10,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Сервис чтения истории переводов.
+ *
+ * <p>Предоставляет постраничный доступ к истории переводов пользователя и по конкретной карте.
+ * Записи создаются асинхронно в {@link com.example.bankcards.event.TransferEventListener},
+ * этот сервис отвечает только за чтение.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
