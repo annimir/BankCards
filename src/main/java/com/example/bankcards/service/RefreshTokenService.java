@@ -4,6 +4,7 @@ import com.example.bankcards.entity.RefreshToken;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.exception.CardOperationException;
 import com.example.bankcards.repository.RefreshTokenRepository;
+import com.example.bankcards.service.impl.RefreshTokenServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,7 +28,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class RefreshTokenService {
+public class RefreshTokenService implements RefreshTokenServiceImpl {
 
     private final RefreshTokenRepository refreshTokenRepository;
 

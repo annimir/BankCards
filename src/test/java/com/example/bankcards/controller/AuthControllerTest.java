@@ -6,7 +6,7 @@ import com.example.bankcards.entity.Role;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.service.AuthService;
 import com.example.bankcards.service.RefreshTokenService;
-import com.example.bankcards.service.UserDetailsServiceImpl;
+import com.example.bankcards.service.UserDetailsService;
 import com.example.bankcards.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +36,7 @@ class AuthControllerTest {
     @Autowired private ObjectMapper objectMapper;
     @MockBean private AuthService authService;
     @MockBean private RefreshTokenService refreshTokenService;
-    @MockBean private UserDetailsServiceImpl userDetailsService;
+    @MockBean private UserDetailsService userDetailsService;
     @MockBean private JwtUtil jwtUtil;
 
     private static final User STUB_USER = User.builder()

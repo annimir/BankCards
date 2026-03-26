@@ -5,6 +5,7 @@ import com.example.bankcards.entity.TransferHistory;
 import com.example.bankcards.exception.ResourceNotFoundException;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.TransferHistoryRepository;
+import com.example.bankcards.service.impl.TransferHistoryServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TransferHistoryService {
+public class TransferHistoryService implements TransferHistoryServiceImpl {
 
     private final TransferHistoryRepository transferHistoryRepository;
     private final CardRepository cardRepository;

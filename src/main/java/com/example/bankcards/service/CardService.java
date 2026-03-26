@@ -12,6 +12,7 @@ import com.example.bankcards.mapper.CardMapper;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.CardSpecification;
 import com.example.bankcards.repository.UserRepository;
+import com.example.bankcards.service.impl.CardServiceImpl;
 import com.example.bankcards.util.CardEncryptionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +41,7 @@ import java.time.LocalDate;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CardService {
+public class CardService implements CardServiceImpl {
 
     private final CardRepository cardRepository;
     private final UserRepository userRepository;

@@ -2,6 +2,7 @@ package com.example.bankcards.service;
 
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.repository.CardRepository;
+import com.example.bankcards.service.impl.CardExpirySchedulerImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,7 +25,7 @@ import java.time.LocalDate;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class CardExpiryScheduler {
+public class CardExpiryScheduler implements CardExpirySchedulerImpl {
 
     private final CardRepository cardRepository;
 

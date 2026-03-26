@@ -6,6 +6,7 @@ import com.example.bankcards.entity.Role;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.exception.DuplicateResourceException;
 import com.example.bankcards.repository.UserRepository;
+import com.example.bankcards.service.impl.AuthServiceImpl;
 import com.example.bankcards.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuthService {
+public class AuthService implements AuthServiceImpl {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
