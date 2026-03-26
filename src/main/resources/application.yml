@@ -69,3 +69,6 @@ info:
     name: BankCards Management System
     version: 1.0.0
     description: REST API for bank card management
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
