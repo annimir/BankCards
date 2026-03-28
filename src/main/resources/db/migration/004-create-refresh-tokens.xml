@@ -6,6 +6,9 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
     <changeSet id="004-create-refresh-tokens" author="bankcards">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="refresh_tokens"/></not>
+        </preConditions>
         <createTable tableName="refresh_tokens">
             <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
